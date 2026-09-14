@@ -7,6 +7,10 @@ on:
       - migration/nuvio-011e824
     paths:
       - '.github/workflows/solyvis-bootstrap.yml'
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
@@ -47,7 +51,6 @@ jobs:
             --exclude='.github/workflows/solyvis-bootstrap.yml' \
             "$UPSTREAM/" ./
 
-          # Preserve the exact MPVKit gitlink used by the legacy baseline.
           rm -rf MPVKit
 
       - name: Apply Solyvis v0.1.0 identity
