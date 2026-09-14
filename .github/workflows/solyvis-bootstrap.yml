@@ -2,15 +2,6 @@ name: Solyvis Source Bootstrap
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - migration/nuvio-011e824
-    paths:
-      - '.github/workflows/solyvis-bootstrap.yml'
-  pull_request:
-    branches:
-      - main
-    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
@@ -50,21 +41,20 @@ jobs:
             --exclude='IMPORT_NOTES.md' \
             --exclude='.github/workflows/' \
             "$UPSTREAM/" ./
-
-          # Keep the exact MPVKit gitlink used by the verified legacy baseline.
           rm -rf MPVKit
 
       - name: Apply Solyvis v0.1.0 identity
         shell: bash
         run: |
           set -euo pipefail
-
           python3 - <<'PY'
           from pathlib import Path
 
           settings = Path('settings.gradle.kts')
-          text = settings.read_text()
-          text = text.replace('rootProject.name = "Nuvio"', 'rootProject.name = "Solyvis"')
+          text = settings.read_text().replace(
+              'rootProject.name = "Nuvio"',
+              'rootProject.name = "Solyvis"'
+          )
           settings.write_text(text)
 
           Path('iosApp/Configuration/Config.xcconfig').write_text(
@@ -88,7 +78,6 @@ jobs:
           set -euo pipefail
           git config user.name "SolYan"
           git config user.email "actions@github.com"
-
           git add -A
           git update-index --add --cacheinfo 160000,$MPVKIT_SHA,MPVKit
 
