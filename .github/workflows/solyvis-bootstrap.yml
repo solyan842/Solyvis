@@ -1,0 +1,97 @@
+name: Solyvis Source Bootstrap
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - migration/nuvio-011e824
+    paths:
+      - '.github/workflows/solyvis-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Solyvis migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/nuvio-011e824
+          fetch-depth: 0
+
+      - name: Fetch exact Nuvio 0.4.19 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM="$RUNNER_TEMP/nuvio-upstream"
+          git clone --no-tags https://github.com/NuvioMedia/NuvioMobile.git "$UPSTREAM"
+          git -C "$UPSTREAM" checkout --detach e1b30697744b3bfeb8038dc3351dba27cf582e73
+          test "$(git -C "$UPSTREAM" rev-parse HEAD)" = "e1b30697744b3bfeb8038dc3351dba27cf582e73"
+
+      - name: Import upstream working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM="$RUNNER_TEMP/nuvio-upstream"
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='README.md' \
+            --exclude='NOTICE.md' \
+            --exclude='CHANGELOG.md' \
+            --exclude='VERSION' \
+            --exclude='IMPORT_NOTES.md' \
+            --exclude='.github/workflows/solyvis-bootstrap.yml' \
+            "$UPSTREAM/" ./
+
+          # Preserve the exact MPVKit gitlink used by the legacy baseline.
+          rm -rf MPVKit
+
+      - name: Apply Solyvis v0.1.0 identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          settings = Path('settings.gradle.kts')
+          text = settings.read_text()
+          text = text.replace('rootProject.name = "Nuvio"', 'rootProject.name = "Solyvis"')
+          settings.write_text(text)
+
+          Path('iosApp/Configuration/Config.xcconfig').write_text(
+              '#include? "Version.xcconfig"\n\n'
+              'TEAM_ID=\n\n'
+              'PRODUCT_NAME=Solyvis\n'
+              'PRODUCT_BUNDLE_IDENTIFIER=com.solyan.solyvis$(TEAM_ID)\n'
+          )
+
+          Path('iosApp/Configuration/Version.xcconfig').write_text(
+              'CURRENT_PROJECT_VERSION=1\n'
+              'MARKETING_VERSION=0.1.0\n'
+          )
+          PY
+
+      - name: Commit imported source
+        shell: bash
+        env:
+          MPVKIT_SHA: d5cf091c80368bbbc1bbf2d195fbc55d926df888
+        run: |
+          set -euo pipefail
+          git config user.name "SolYan"
+          git config user.email "actions@github.com"
+
+          git add -A
+          git update-index --add --cacheinfo 160000,$MPVKIT_SHA,MPVKit
+
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Import Nuvio 0.4.19 source baseline for Solyvis"
+          git push origin HEAD:refs/heads/migration/nuvio-011e824
