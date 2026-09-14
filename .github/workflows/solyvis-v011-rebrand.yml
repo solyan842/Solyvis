@@ -39,17 +39,14 @@ jobs:
                   return
               p.write_text(text.replace(old, new))
 
-          # Remove the temporary PR trigger marker from the final release commit.
           Path('.solyvis-v011-trigger').unlink(missing_ok=True)
 
-          # Versioning.
           Path('VERSION').write_text('0.1.1\n')
           Path('iosApp/Configuration/Version.xcconfig').write_text(
               'CURRENT_PROJECT_VERSION=2\n'
               'MARKETING_VERSION=0.1.1\n'
           )
 
-          # README / changelog.
           readme = Path('README.md')
           text = readme.read_text().replace('Current baseline: **v0.1.0**.', 'Current baseline: **v0.1.1**.')
           text = text.replace('`v0.1.0` is the initial independent Solyvis baseline and is under active migration from the reference source tree.', '`v0.1.1` establishes the first product-level Solyvis identity across iOS and Android while preserving internal compatibility names until the build baseline is stable.')
@@ -65,7 +62,6 @@ jobs:
                   text = entry + text
               changelog.write_text(text)
 
-          # Android product identity. Keep source namespace/package names unchanged for now.
           replace('androidApp/build.gradle.kts', 'applicationId = "com.nuvio.app"', 'applicationId = "com.solyan.solyvis"')
           replace('androidApp/build.gradle.kts', 'variant.applicationId.set("com.nuviodebug.com")', 'variant.applicationId.set("com.solyan.solyvis.debug")')
           Path('composeApp/src/androidMain/res/values/strings.xml').write_text('<resources>\n    <string name="app_name">Solyvis</string>\n</resources>\n')
@@ -87,7 +83,6 @@ jobs:
           )
           manifest.write_text(text)
 
-          # iOS URL identity: Solyvis primary, Nuvio retained as legacy callback alias.
           info = Path('iosApp/iosApp/Info.plist')
           text = info.read_text()
           text = text.replace('<string>com.nuvio.app.auth</string>', '<string>com.solyan.solyvis.auth</string>')
@@ -97,7 +92,6 @@ jobs:
           )
           info.write_text(text)
 
-          # Runtime configuration defaults and iOS framework identity.
           build = Path('composeApp/build.gradle.kts')
           text = build.read_text()
           text = text.replace('"nuvio://auth/trakt"', '"solyvis://auth/trakt"')
@@ -109,9 +103,9 @@ jobs:
           if old not in text:
               raise SystemExit('Expected unconditional local.properties registration not found')
           text = text.replace(old, new)
+          text = '\n'.join(line.rstrip() for line in text.splitlines()) + '\n'
           build.write_text(text)
 
-          # Xcode product and bundle identity. Live Activity compatibility remains a separate iOS 15 commit.
           pbx = Path('iosApp/iosApp.xcodeproj/project.pbxproj')
           text = pbx.read_text()
           text = text.replace('Nuvio.app', 'Solyvis.app')
