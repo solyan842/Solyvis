@@ -1,7 +1,39 @@
 # Solyvis
 
-Solyvis is a SolYan media-center project derived from GPL-3.0-licensed Nuvio Mobile code.
+**Solyvis** is a cross-platform media-center project by SolYan.
 
-Initial migration source: `solyan842/Nuvio-Legacy-iOS15`, branch `legacy-ios15`, commit `011e824fcfe6c27f221ad81ecdc66b60be9fc283`.
+Current baseline: **v0.1.0**.
 
-This repository will retain the applicable GPL-3.0 license and upstream attribution while developing Solyvis as an independently branded product.
+## Project identity
+
+- Product name: `Solyvis`
+- Primary iOS bundle namespace: `com.solyan.solyvis`
+- Current migration target: iOS/iPadOS 15+ compatibility
+- MPV playback baseline: Nuvio MPVKit branch retained during migration
+
+## Upstream provenance
+
+Solyvis is derived from GPL-3.0-licensed Nuvio Mobile source code. The initial migration baseline is:
+
+- Source repository: `solyan842/Nuvio-Legacy-iOS15`
+- Source branch: `legacy-ios15`
+- Source commit: `011e824fcfe6c27f221ad81ecdc66b60be9fc283`
+- MPVKit baseline: `d5cf091c80368bbbc1bbf2d195fbc55d926df888`
+
+Solyvis keeps the applicable GPL-3.0 license and upstream attribution. Solyvis-specific branding and modifications are maintained separately from the reference repository.
+
+## Migration policy
+
+The migration is intentionally staged to keep build failures diagnosable:
+
+1. Preserve upstream provenance and dependency baselines.
+2. Establish Solyvis product identity and versioning.
+3. Import the iOS/Kotlin Multiplatform build baseline.
+4. Lower the iOS application deployment target to iOS 15.
+5. Exclude the iOS 16.1+ Live Activity extension from the iOS 15 application target while retaining normal downloads.
+6. Validate Kotlin/Native, MPVKit and the native Xcode target in CI.
+7. Rename internal Kotlin packages only after the compatibility baseline is stable.
+
+## Status
+
+`v0.1.0` is the initial independent Solyvis baseline and is under active migration from the reference source tree.
