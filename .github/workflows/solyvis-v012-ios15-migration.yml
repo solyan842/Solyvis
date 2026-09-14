@@ -1,0 +1,105 @@
+name: Solyvis v0.1.2 iOS 15 Migration
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.head_ref == 'release/v0.1.2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v0.1.2
+          fetch-depth: 0
+
+      - name: Apply iOS 15 baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          Path('VERSION').write_text('0.1.2\n')
+          Path('iosApp/Configuration/Version.xcconfig').write_text(
+              'CURRENT_PROJECT_VERSION=3\n'
+              'MARKETING_VERSION=0.1.2\n'
+          )
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          text = text.replace('Current baseline: **v0.1.1**.', 'Current baseline: **v0.1.2**.')
+          old_status = '`v0.1.1` establishes the first product-level Solyvis identity across iOS and Android while preserving internal compatibility names until the build baseline is stable.'
+          new_status = '`v0.1.2` establishes the iOS 15 application baseline: the main app targets iOS 15.0 while the iOS 16.1+ Live Activity widget remains in source but is no longer embedded or required by the legacy-compatible app target.'
+          text = text.replace(old_status, new_status)
+          readme.write_text(text)
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          if '## 0.1.2 — iOS 15 Baseline' not in text:
+              entry = '''# Changelog\n\n## 0.1.2 — iOS 15 Baseline\n\n- Set the main iOS application target deployment floor to iOS 15.0.\n- Detached `DownloadsWidgetExtension` from the main app target dependency graph.\n- Removed the app-extension embed phase from the iOS 15 application target.\n- Removed Live Activity capability declarations from the main app while retaining normal download functionality.\n- Kept the Live Activity widget source and its own iOS 16.1 deployment floor for future/newer builds.\n- Updated the shared Xcode scheme to reference `Solyvis.app`.\n- Added macOS CI that builds the Kotlin/Native framework and native iOS app against the iOS 15 baseline.\n\n'''
+              if text.startswith('# Changelog\n\n'):
+                  text = entry + text[len('# Changelog\n\n'):]
+              else:
+                  text = entry + text
+              changelog.write_text(text)
+
+          pbx = Path('iosApp/iosApp.xcodeproj/project.pbxproj')
+          text = pbx.read_text()
+
+          embed_line = '\t\t\t\t0A1B2C3D4E5F60718293A4BC /* Embed App Extensions */,\n'
+          dependency_line = '\t\t\t\t0A1B2C3D4E5F60718293A4C2 /* PBXTargetDependency */,\n'
+          if embed_line not in text:
+              raise SystemExit('Main app Embed App Extensions phase reference not found')
+          if dependency_line not in text:
+              raise SystemExit('Main app widget target dependency reference not found')
+          text = text.replace(embed_line, '', 1)
+          text = text.replace(dependency_line, '', 1)
+
+          app_live_setting = '\t\t\t\tINFOPLIST_FILE = iosApp/Info.plist;\n\t\t\t\tINFOPLIST_KEY_NSSupportsLiveActivities = YES;'
+          app_ios15_setting = '\t\t\t\tINFOPLIST_FILE = iosApp/Info.plist;\n\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 15.0;'
+          count = text.count(app_live_setting)
+          if count != 2:
+              raise SystemExit(f'Expected Live Activity setting in two app configurations, found {count}')
+          text = text.replace(app_live_setting, app_ios15_setting)
+          pbx.write_text(text)
+
+          info = Path('iosApp/iosApp/Info.plist')
+          text = info.read_text()
+          live_plist = '\t<key>NSSupportsLiveActivities</key>\n\t<true/>\n'
+          if live_plist not in text:
+              raise SystemExit('NSSupportsLiveActivities plist declaration not found')
+          info.write_text(text.replace(live_plist, ''))
+
+          scheme = Path('iosApp/iosApp.xcodeproj/xcshareddata/xcschemes/iosApp.xcscheme')
+          text = scheme.read_text()
+          if 'Nuvio.app' not in text:
+              raise SystemExit('Legacy Nuvio.app scheme references not found')
+          scheme.write_text(text.replace('Nuvio.app', 'Solyvis.app'))
+          PY
+
+          git diff --check
+
+      - name: Commit v0.1.2 changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "SolYan"
+          git config user.email "actions@github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Solyvis v0.1.2 changes already applied."
+            exit 0
+          fi
+          git commit -m "Solyvis v0.1.2: establish iOS 15 app baseline"
+          git push origin HEAD:refs/heads/release/v0.1.2
