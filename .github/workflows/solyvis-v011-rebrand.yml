@@ -1,0 +1,136 @@
+name: Solyvis v0.1.1 Rebrand
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  rebrand:
+    if: github.head_ref == 'release/v0.1.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v0.1.1
+          fetch-depth: 0
+
+      - name: Apply Solyvis v0.1.1 identity and Gradle hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, required=True):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  if required:
+                      raise SystemExit(f"Expected text not found in {path}: {old!r}")
+                  return
+              p.write_text(text.replace(old, new))
+
+          # Versioning.
+          Path('VERSION').write_text('0.1.1\n')
+          Path('iosApp/Configuration/Version.xcconfig').write_text(
+              'CURRENT_PROJECT_VERSION=2\n'
+              'MARKETING_VERSION=0.1.1\n'
+          )
+
+          # README / changelog.
+          readme = Path('README.md')
+          text = readme.read_text().replace('Current baseline: **v0.1.0**.', 'Current baseline: **v0.1.1**.')
+          text = text.replace('`v0.1.0` is the initial independent Solyvis baseline and is under active migration from the reference source tree.', '`v0.1.1` establishes the first product-level Solyvis identity across iOS and Android while preserving internal compatibility names until the build baseline is stable.')
+          readme.write_text(text)
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          if '## 0.1.1 — Product Identity' not in text:
+              entry = '''# Changelog\n\n## 0.1.1 — Product Identity\n\n- Switched Android application IDs to `com.solyan.solyvis` / `com.solyan.solyvis.debug`.\n- Updated Android and iOS display identity to Solyvis.\n- Added the `solyvis://` deep-link scheme while retaining `nuvio://` as a compatibility alias.\n- Switched default Trakt and Simkl callback URIs to the Solyvis scheme.\n- Updated native iOS application and widget bundle IDs to the Solyvis namespace.\n- Updated the Kotlin iOS framework bundle ID to `com.solyan.solyvis`.\n- Hardened `generateRuntimeConfigs` so a missing `local.properties` is truly optional in CI.\n- Preserved internal `com.nuvio.*` Kotlin packages and theme identifiers for staged migration stability.\n\n'''
+              if text.startswith('# Changelog\n\n'):
+                  text = entry + text[len('# Changelog\n\n'):]
+              else:
+                  text = entry + text
+              changelog.write_text(text)
+
+          # Android product identity. Keep source namespace/package names unchanged for now.
+          replace('androidApp/build.gradle.kts', 'applicationId = "com.nuvio.app"', 'applicationId = "com.solyan.solyvis"')
+          replace('androidApp/build.gradle.kts', 'variant.applicationId.set("com.nuviodebug.com")', 'variant.applicationId.set("com.solyan.solyvis.debug")')
+          Path('composeApp/src/androidMain/res/values/strings.xml').write_text('<resources>\n    <string name="app_name">Solyvis</string>\n</resources>\n')
+          Path('androidApp/src/debug/res/values/strings.xml').write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name">Solyvis Debug</string>\n</resources>\n')
+
+          manifest = Path('androidApp/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          text = text.replace(
+              '''                <data\n                    android:scheme="nuvio"\n                    android:host="auth"\n                    android:path="/simkl" />''',
+              '''                <data\n                    android:scheme="solyvis"\n                    android:host="auth"\n                    android:path="/simkl" />\n                <data\n                    android:scheme="nuvio"\n                    android:host="auth"\n                    android:path="/simkl" />'''
+          )
+          text = text.replace(
+              '''                <data\n                    android:scheme="nuvio"\n                    android:host="auth"\n                    android:path="/trakt" />''',
+              '''                <data\n                    android:scheme="solyvis"\n                    android:host="auth"\n                    android:path="/trakt" />\n                <data\n                    android:scheme="nuvio"\n                    android:host="auth"\n                    android:path="/trakt" />'''
+          )
+          text = text.replace(
+              '                <data android:scheme="nuvio" />',
+              '                <data android:scheme="solyvis" />\n                <data android:scheme="nuvio" />'
+          )
+          manifest.write_text(text)
+
+          # iOS URL identity: Solyvis primary, Nuvio retained as legacy callback alias.
+          info = Path('iosApp/iosApp/Info.plist')
+          text = info.read_text()
+          text = text.replace('<string>com.nuvio.app.auth</string>', '<string>com.solyan.solyvis.auth</string>')
+          text = text.replace(
+              '\t\t\t\t<string>nuvio</string>\n\t\t\t\t<string>stremio</string>',
+              '\t\t\t\t<string>solyvis</string>\n\t\t\t\t<string>nuvio</string>\n\t\t\t\t<string>stremio</string>'
+          )
+          info.write_text(text)
+
+          # Runtime configuration defaults and iOS framework identity.
+          build = Path('composeApp/build.gradle.kts')
+          text = build.read_text()
+          text = text.replace('"nuvio://auth/trakt"', '"solyvis://auth/trakt"')
+          text = text.replace('"nuvio://auth/simkl"', '"solyvis://auth/simkl"')
+          text = text.replace('"nuvio")}', '"solyvis")}')
+          text = text.replace('val iosFrameworkBundleId = "com.nuvio.media"', 'val iosFrameworkBundleId = "com.solyan.solyvis"')
+          old = '    localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))'
+          new = '''    val localProperties = rootProject.layout.projectDirectory.file("local.properties")\n    if (localProperties.asFile.exists()) {\n        localPropertiesFile.set(localProperties)\n    }'''
+          if old not in text:
+              raise SystemExit('Expected unconditional local.properties registration not found')
+          text = text.replace(old, new)
+          build.write_text(text)
+
+          # Xcode product and bundle identity. Live Activity compatibility remains a separate iOS 15 commit.
+          pbx = Path('iosApp/iosApp.xcodeproj/project.pbxproj')
+          text = pbx.read_text()
+          text = text.replace('Nuvio.app', 'Solyvis.app')
+          text = text.replace('PRODUCT_BUNDLE_IDENTIFIER = com.nuvio.app.DownloadsWidgetExtension;', 'PRODUCT_BUNDLE_IDENTIFIER = com.solyan.solyvis.DownloadsWidgetExtension;')
+          text = text.replace('PRODUCT_BUNDLE_IDENTIFIER = com.nuvio.media.DownloadsWidgetExtension;', 'PRODUCT_BUNDLE_IDENTIFIER = com.solyan.solyvis.DownloadsWidgetExtension;')
+          text = text.replace('PRODUCT_BUNDLE_IDENTIFIER = com.nuvio.app;', 'PRODUCT_BUNDLE_IDENTIFIER = com.solyan.solyvis;')
+          text = text.replace('PRODUCT_BUNDLE_IDENTIFIER = com.nuvio.media;', 'PRODUCT_BUNDLE_IDENTIFIER = com.solyan.solyvis;')
+          pbx.write_text(text)
+          PY
+
+          git diff --check
+
+      - name: Commit v0.1.1 changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "SolYan"
+          git config user.email "actions@github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Solyvis v0.1.1 changes already applied."
+            exit 0
+          fi
+          git commit -m "Solyvis v0.1.1: establish product identity"
+          git push origin HEAD:refs/heads/release/v0.1.1
