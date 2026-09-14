@@ -39,6 +39,9 @@ jobs:
                   return
               p.write_text(text.replace(old, new))
 
+          # Remove the temporary PR trigger marker from the final release commit.
+          Path('.solyvis-v011-trigger').unlink(missing_ok=True)
+
           # Versioning.
           Path('VERSION').write_text('0.1.1\n')
           Path('iosApp/Configuration/Version.xcconfig').write_text(
