@@ -2,7 +2,7 @@
 
 **Solyvis** is a cross-platform media-center project by SolYan.
 
-Current baseline: **v0.1.0**.
+Current baseline: **v0.1.1**.
 
 ## Project identity
 
@@ -36,4 +36,4 @@ The migration is intentionally staged to keep build failures diagnosable:
 
 ## Status
 
-`v0.1.0` is the initial independent Solyvis baseline and is under active migration from the reference source tree.
+`v0.1.1` establishes the first product-level Solyvis identity across iOS and Android while preserving internal compatibility names until the build baseline is stable.
