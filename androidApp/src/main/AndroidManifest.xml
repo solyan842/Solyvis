@@ -36,6 +36,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
+                    android:scheme="solyvis"
+                    android:host="auth"
+                    android:path="/simkl" />
+                <data
                     android:scheme="nuvio"
                     android:host="auth"
                     android:path="/simkl" />
@@ -47,6 +51,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
+                    android:scheme="solyvis"
+                    android:host="auth"
+                    android:path="/trakt" />
+                <data
                     android:scheme="nuvio"
                     android:host="auth"
                     android:path="/trakt" />
@@ -57,6 +65,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
+                <data android:scheme="solyvis" />
                 <data android:scheme="nuvio" />
             </intent-filter>
             <intent-filter>
