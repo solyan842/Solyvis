@@ -24,6 +24,7 @@ on:
       - 'iosApp/**'
       - 'gradle/**'
       - 'gradlew'
+      - 'gradlew.bat'
       - 'gradle.properties'
       - 'settings.gradle.kts'
       - 'build.gradle.kts'
@@ -68,7 +69,27 @@ jobs:
         env:
           GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
-        run: ./gradlew :composeApp:linkDebugFrameworkIosArm64 --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew :composeApp:linkDebugFrameworkIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
+
+      - name: Show first Kotlin Native errors
+        if: failure()
+        run: |
+          if [ -f ios15-gradle.log ]; then
+            echo '=== First meaningful Kotlin/Native errors ==='
+            grep -nE -m 80 'error:|e: |FAILURE:|Compilation failed|linker command failed|Undefined symbols|Could not find|Exception|Caused by:' ios15-gradle.log || true
+            echo '=== Last 200 Gradle log lines ==='
+            tail -n 200 ios15-gradle.log || true
+          fi
+
+      - name: Upload Kotlin Native build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solyvis-ios15-gradle-log
+          path: ios15-gradle.log
+          if-no-files-found: ignore
 
       - name: Inspect Xcode targets
         run: xcodebuild -project iosApp/iosApp.xcodeproj -list
