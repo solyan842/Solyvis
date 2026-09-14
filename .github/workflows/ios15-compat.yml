@@ -1,0 +1,98 @@
+name: Solyvis iOS 15 Compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'composeApp/**'
+      - 'iosApp/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradle.properties'
+      - 'settings.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'MPVKit'
+      - '.github/workflows/ios15-compat.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'composeApp/**'
+      - 'iosApp/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradle.properties'
+      - 'settings.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'MPVKit'
+      - '.github/workflows/ios15-compat.yml'
+
+jobs:
+  ios15-compat:
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Solyvis
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Select Xcode 16.4
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer || true
+          xcodebuild -version
+          sw_vers
+
+      - name: Verify MPVKit baseline
+        run: |
+          test -d MPVKit
+          test "$(git -C MPVKit rev-parse HEAD)" = "d5cf091c80368bbbc1bbf2d195fbc55d926df888"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Compile Kotlin iOS device framework
+        env:
+          GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
+          KOTLIN_DAEMON_JVMARGS: -Xmx8g
+        run: ./gradlew :composeApp:linkDebugFrameworkIosArm64 --stacktrace
+
+      - name: Inspect Xcode targets
+        run: xcodebuild -project iosApp/iosApp.xcodeproj -list
+
+      - name: Build Solyvis for iOS 15
+        env:
+          GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
+          KOTLIN_DAEMON_JVMARGS: -Xmx8g
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -target iosApp \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee ios15-xcodebuild.log
+
+      - name: Upload Xcode build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solyvis-ios15-xcodebuild-log
+          path: ios15-xcodebuild.log
+          if-no-files-found: ignore
