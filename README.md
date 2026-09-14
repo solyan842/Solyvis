@@ -8,6 +8,8 @@ Current baseline: **v0.1.2**.
 
 - Product name: `Solyvis`
 - Primary iOS bundle namespace: `com.solyan.solyvis`
+- Main iOS application deployment target: `15.0`
+- Live Activity widget deployment target: `16.1+` (retained in source, not embedded in the iOS 15 app)
 - Current migration target: iOS/iPadOS 15+ compatibility
 - MPV playback baseline: Nuvio MPVKit branch retained during migration
 
