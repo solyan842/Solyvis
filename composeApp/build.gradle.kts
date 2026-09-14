@@ -198,7 +198,7 @@ fun readXcconfigValue(file: File, key: String): String? {
     return file.readLines()
         .asSequence()
         .map(String::trim)
-        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=') }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=' ) }
         .map { line ->
             val separatorIndex = line.indexOf('=')
             line.substring(0, separatorIndex).trim() to line.substring(separatorIndex + 1).trim()
@@ -213,6 +213,10 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinxSerialization)
+}
+
+compose.resources {
+    packageOfResClass = "nuvio.composeapp.generated.resources"
 }
 
 val supabaseProps = Properties().apply {
