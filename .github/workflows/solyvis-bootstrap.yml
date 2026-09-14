@@ -48,9 +48,10 @@ jobs:
             --exclude='CHANGELOG.md' \
             --exclude='VERSION' \
             --exclude='IMPORT_NOTES.md' \
-            --exclude='.github/workflows/solyvis-bootstrap.yml' \
+            --exclude='.github/workflows/' \
             "$UPSTREAM/" ./
 
+          # Keep the exact MPVKit gitlink used by the verified legacy baseline.
           rm -rf MPVKit
 
       - name: Apply Solyvis v0.1.0 identity
