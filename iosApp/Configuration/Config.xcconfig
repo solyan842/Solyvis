@@ -1,0 +1,6 @@
+#include? "Version.xcconfig"
+
+TEAM_ID=
+
+PRODUCT_NAME=Solyvis
+PRODUCT_BUNDLE_IDENTIFIER=com.solyan.solyvis$(TEAM_ID)
