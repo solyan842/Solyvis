@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 — Development
+
+- Started from the validated v0.1.2 iOS 15 compatibility baseline.
+- Bumped product version to 0.1.3 / build 4 for the next development stage.
+
 ## 0.1.2 — iOS 15 Baseline
 
 - Set the main iOS application target deployment floor to iOS 15.0.

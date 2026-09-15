@@ -2,7 +2,7 @@
 
 **Solyvis** is a cross-platform media-center project by SolYan.
 
-Current baseline: **v0.1.2**.
+Current development baseline: **v0.1.3**.
 
 ## Project identity
 
@@ -38,4 +38,4 @@ The migration is intentionally staged to keep build failures diagnosable:
 
 ## Status
 
-`v0.1.2` establishes the iOS 15 application baseline: the main app targets iOS 15.0 while the iOS 16.1+ Live Activity widget remains in source but is no longer embedded or required by the legacy-compatible app target.
+`v0.1.2` is the validated iOS 15 compatibility baseline. `v0.1.3` starts the next development stage from that green baseline without changing the established iOS 15 deployment floor.
