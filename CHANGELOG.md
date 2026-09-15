@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 — iOS 15 Baseline
+
+- Set the main iOS application target deployment floor to iOS 15.0.
+- Detached `DownloadsWidgetExtension` from the main app target dependency graph.
+- Removed the app-extension embed phase from the iOS 15 application target.
+- Removed Live Activity capability declarations from the main app while retaining normal download functionality.
+- Kept the Live Activity widget source and its own iOS 16.1 deployment floor for future/newer builds.
+- Updated the shared Xcode scheme to reference `Solyvis.app`.
+- Added macOS CI that builds the Kotlin/Native framework and native iOS app against the iOS 15 baseline.
+
 ## 0.1.1 — Product Identity
 
 - Switched Android application IDs to `com.solyan.solyvis` / `com.solyan.solyvis.debug`.

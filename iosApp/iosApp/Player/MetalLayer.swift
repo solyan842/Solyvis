@@ -12,8 +12,14 @@ class MetalLayer: CAMetalLayer {
     }
 
     override var wantsExtendedDynamicRangeContent: Bool {
-        get { return super.wantsExtendedDynamicRangeContent }
+        get {
+            if #available(iOS 16.0, *) {
+                return super.wantsExtendedDynamicRangeContent
+            }
+            return false
+        }
         set {
+            guard #available(iOS 16.0, *) else { return }
             if Thread.isMainThread {
                 super.wantsExtendedDynamicRangeContent = newValue
             } else {
