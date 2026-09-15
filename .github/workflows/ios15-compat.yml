@@ -100,15 +100,49 @@ jobs:
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
         run: |
           set -o pipefail
+          DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
+          rm -rf "$DERIVED_DATA"
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
             -configuration Debug \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
+            -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build | tee ios15-xcodebuild.log
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
+          APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphoneos/Solyvis.app"
+          test -d "$APP_PATH"
+
+          VERSION_NAME="$(tr -d '[:space:]' < VERSION)"
+          PACKAGE_DIR="$RUNNER_TEMP/solyvis-ipa"
+          IPA_PATH="$GITHUB_WORKSPACE/Solyvis-v${VERSION_NAME}-unsigned.ipa"
+
+          rm -rf "$PACKAGE_DIR" "$IPA_PATH"
+          mkdir -p "$PACKAGE_DIR/Payload"
+          ditto "$APP_PATH" "$PACKAGE_DIR/Payload/Solyvis.app"
+          (
+            cd "$PACKAGE_DIR"
+            /usr/bin/zip -qry "$IPA_PATH" Payload
+          )
+
+          test -s "$IPA_PATH"
+          /usr/bin/unzip -l "$IPA_PATH" | head -n 40
+          echo "IPA_PATH=$IPA_PATH" >> "$GITHUB_ENV"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: solyvis-ios15-unsigned-ipa
+          path: ${{ env.IPA_PATH }}
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload Xcode build log on failure
         if: failure()
