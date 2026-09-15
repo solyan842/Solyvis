@@ -113,6 +113,44 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             build | tee ios15-xcodebuild.log
 
+      - name: Normalize embedded framework iOS floor
+        run: |
+          set -euo pipefail
+          DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
+          APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphoneos/Solyvis.app"
+          FRAMEWORKS_DIR="$APP_PATH/Frameworks"
+          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+
+          test -d "$FRAMEWORKS_DIR"
+
+          while IFS= read -r -d '' PLIST; do
+            FRAMEWORK_DIR="$(dirname "$PLIST")"
+            EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")"
+            BINARY="$FRAMEWORK_DIR/$EXECUTABLE"
+            TMP_BINARY="$BINARY.normalized"
+
+            test -f "$BINARY"
+            echo "Normalizing $(basename "$FRAMEWORK_DIR") / $EXECUTABLE"
+
+            if /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST" >/dev/null 2>&1; then
+              /usr/libexec/PlistBuddy -c 'Set :MinimumOSVersion 15.0' "$PLIST"
+            else
+              /usr/libexec/PlistBuddy -c 'Add :MinimumOSVersion string 15.0' "$PLIST"
+            fi
+
+            xcrun vtool \
+              -set-build-version ios 15.0 "$SDK_VERSION" \
+              -replace \
+              -output "$TMP_BINARY" \
+              "$BINARY"
+            chmod 755 "$TMP_BINARY"
+            mv "$TMP_BINARY" "$BINARY"
+
+            test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" = "15.0"
+            xcrun vtool -show-build "$BINARY" | tee /tmp/solyvis-vtool.txt
+            grep -Eq 'minos[[:space:]]+15\.0' /tmp/solyvis-vtool.txt
+          done < <(find "$FRAMEWORKS_DIR" -mindepth 2 -maxdepth 2 -name Info.plist -print0)
+
       - name: Package unsigned IPA
         run: |
           set -euo pipefail
