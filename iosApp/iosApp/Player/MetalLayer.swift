@@ -11,6 +11,7 @@ class MetalLayer: CAMetalLayer {
         }
     }
 
+    @available(iOS 16.0, *)
     override var wantsExtendedDynamicRangeContent: Bool {
         get { return super.wantsExtendedDynamicRangeContent }
         set {
