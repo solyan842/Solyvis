@@ -33,15 +33,12 @@ on:
       - '.github/workflows/ios15-compat.yml'
 
 jobs:
-  ios15-compat:
-    runs-on: macos-15
-    timeout-minutes: 60
-
+  source-patch:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Solyvis
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 1
 
       - name: Prepare iOS 15 tab availability source patch
@@ -69,6 +66,33 @@ jobs:
           name: solyvis-ios15-patched-contentview
           path: iosApp/iosApp/ContentView.swift
           if-no-files-found: error
+
+  ios15-compat:
+    needs: source-patch
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Solyvis
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Apply validated ContentView patch
+        uses: actions/download-artifact@v4
+        with:
+          name: solyvis-ios15-patched-contentview
+          path: iosApp/iosApp
+
+      - name: Verify patched tab model
+        shell: bash
+        run: |
+          grep -q '^enum NuvioAppTab: String, CaseIterable, Hashable {' iosApp/iosApp/ContentView.swift
+          if grep -B1 '^enum NuvioAppTab: String, CaseIterable, Hashable {' iosApp/iosApp/ContentView.swift | grep -q '@available(iOS 16.0, \*)'; then
+            echo 'NuvioAppTab is still iOS 16-only' >&2
+            exit 1
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
