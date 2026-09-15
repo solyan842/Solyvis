@@ -34,7 +34,7 @@ on:
 
 jobs:
   ios15-compat:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 60
 
     steps:
