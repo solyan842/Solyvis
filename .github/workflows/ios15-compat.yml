@@ -128,6 +128,7 @@ jobs:
             EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")"
             BINARY="$FRAMEWORK_DIR/$EXECUTABLE"
             TMP_BINARY="$BINARY.normalized"
+            WORK_DIR="$(mktemp -d "$RUNNER_TEMP/solyvis-vtool.XXXXXX")"
 
             test -f "$BINARY"
             echo "Normalizing $(basename "$FRAMEWORK_DIR") / $EXECUTABLE"
@@ -138,17 +139,47 @@ jobs:
               /usr/libexec/PlistBuddy -c 'Add :MinimumOSVersion string 15.0' "$PLIST"
             fi
 
-            xcrun vtool \
-              -set-build-version ios 15.0 "$SDK_VERSION" \
-              -replace \
-              -output "$TMP_BINARY" \
-              "$BINARY"
+            LIPO_INFO="$(xcrun lipo -info "$BINARY")"
+            ARCHS="$(xcrun lipo -archs "$BINARY")"
+            read -r -a ARCH_ARRAY <<< "$ARCHS"
+            test "${#ARCH_ARRAY[@]}" -gt 0
+            echo "  $LIPO_INFO"
+
+            NORMALIZED_SLICES=()
+            for ARCH in "${ARCH_ARRAY[@]}"; do
+              THIN_INPUT="$WORK_DIR/$ARCH.input"
+              THIN_OUTPUT="$WORK_DIR/$ARCH.output"
+
+              if [[ "$LIPO_INFO" == Non-fat\ file:* ]]; then
+                cp "$BINARY" "$THIN_INPUT"
+              else
+                xcrun lipo "$BINARY" -thin "$ARCH" -output "$THIN_INPUT"
+              fi
+
+              xcrun vtool \
+                -set-build-version ios 15.0 "$SDK_VERSION" \
+                -replace \
+                -output "$THIN_OUTPUT" \
+                "$THIN_INPUT"
+
+              chmod 755 "$THIN_OUTPUT"
+              echo "  validating $ARCH"
+              xcrun vtool -show-build "$THIN_OUTPUT" | tee "$WORK_DIR/$ARCH.vtool.txt"
+              grep -Eq 'minos[[:space:]]+15\.0' "$WORK_DIR/$ARCH.vtool.txt"
+              NORMALIZED_SLICES+=("$THIN_OUTPUT")
+            done
+
+            if [[ "$LIPO_INFO" == Non-fat\ file:* ]]; then
+              cp "${NORMALIZED_SLICES[0]}" "$TMP_BINARY"
+            else
+              xcrun lipo -create "${NORMALIZED_SLICES[@]}" -output "$TMP_BINARY"
+            fi
+
             chmod 755 "$TMP_BINARY"
             mv "$TMP_BINARY" "$BINARY"
+            rm -rf "$WORK_DIR"
 
             test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" = "15.0"
-            xcrun vtool -show-build "$BINARY" | tee /tmp/solyvis-vtool.txt
-            grep -Eq 'minos[[:space:]]+15\.0' /tmp/solyvis-vtool.txt
           done < <(find "$FRAMEWORKS_DIR" -mindepth 2 -maxdepth 2 -name Info.plist -print0)
 
       - name: Package unsigned IPA
