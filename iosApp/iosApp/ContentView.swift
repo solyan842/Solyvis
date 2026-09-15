@@ -229,7 +229,6 @@ final class TabNavigationCoordinator: ObservableObject {
     }
 }
 
-@available(iOS 16.0, *)
 enum NuvioAppTab: String, CaseIterable, Hashable {
     case home = "Home"
     case search = "Search"
