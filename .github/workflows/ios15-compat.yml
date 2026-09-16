@@ -35,7 +35,7 @@ on:
 jobs:
   ios15-compat:
     runs-on: macos-15-intel
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout Solyvis
@@ -65,13 +65,13 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Compile Kotlin iOS device framework
+      - name: Compile Kotlin iOS device sources for Release build
         env:
           GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
         run: |
           set -o pipefail
-          ./gradlew :composeApp:linkDebugFrameworkIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
+          ./gradlew :composeApp:compileKotlinIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
 
       - name: Show first Kotlin Native errors
         if: failure()
@@ -94,21 +94,199 @@ jobs:
       - name: Inspect Xcode targets
         run: xcodebuild -project iosApp/iosApp.xcodeproj -list
 
-      - name: Build Solyvis for iOS 15
+      - name: Build Solyvis Release for iOS 15
         env:
           GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
         run: |
           set -o pipefail
+          DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
+          rm -rf "$DERIVED_DATA"
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
+            -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            ENABLE_PREVIEWS=NO \
             build | tee ios15-xcodebuild.log
+
+      - name: Verify Release app shape
+        run: |
+          set -euo pipefail
+          APP_PATH="$RUNNER_TEMP/SolyvisDerivedData/Build/Products/Release-iphoneos/Solyvis.app"
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/Solyvis"
+          test ! -e "$APP_PATH/Solyvis.debug.dylib"
+          test ! -e "$APP_PATH/__preview.dylib"
+          test ! -d "$APP_PATH/PlugIns"
+
+      - name: Normalize embedded framework iOS floor
+        run: |
+          set -euo pipefail
+          DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
+          APP_PATH="$DERIVED_DATA/Build/Products/Release-iphoneos/Solyvis.app"
+          FRAMEWORKS_DIR="$APP_PATH/Frameworks"
+          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+
+          test -d "$FRAMEWORKS_DIR"
+
+          while IFS= read -r -d '' PLIST; do
+            FRAMEWORK_DIR="$(dirname "$PLIST")"
+            EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")"
+            BINARY="$FRAMEWORK_DIR/$EXECUTABLE"
+            TMP_BINARY="$BINARY.normalized"
+            WORK_DIR="$(mktemp -d "$RUNNER_TEMP/solyvis-vtool.XXXXXX")"
+
+            test -f "$BINARY"
+            echo "Normalizing $(basename "$FRAMEWORK_DIR") / $EXECUTABLE"
+
+            if /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST" >/dev/null 2>&1; then
+              /usr/libexec/PlistBuddy -c 'Set :MinimumOSVersion 15.0' "$PLIST"
+            else
+              /usr/libexec/PlistBuddy -c 'Add :MinimumOSVersion string 15.0' "$PLIST"
+            fi
+
+            LIPO_INFO="$(xcrun lipo -info "$BINARY")"
+            ARCHS="$(xcrun lipo -archs "$BINARY")"
+            read -r -a ARCH_ARRAY <<< "$ARCHS"
+            test "${#ARCH_ARRAY[@]}" -gt 0
+            echo "  $LIPO_INFO"
+
+            NORMALIZED_SLICES=()
+            for ARCH in "${ARCH_ARRAY[@]}"; do
+              THIN_INPUT="$WORK_DIR/$ARCH.input"
+              THIN_OUTPUT="$WORK_DIR/$ARCH.output"
+
+              if [[ "$LIPO_INFO" == Non-fat\ file:* ]]; then
+                cp "$BINARY" "$THIN_INPUT"
+              else
+                xcrun lipo "$BINARY" -thin "$ARCH" -output "$THIN_INPUT"
+              fi
+
+              xcrun vtool \
+                -set-build-version ios 15.0 "$SDK_VERSION" \
+                -replace \
+                -output "$THIN_OUTPUT" \
+                "$THIN_INPUT"
+
+              chmod 755 "$THIN_OUTPUT"
+              echo "  validating $ARCH"
+              xcrun vtool -show-build "$THIN_OUTPUT" | tee "$WORK_DIR/$ARCH.vtool.txt"
+              grep -Eq 'minos[[:space:]]+15\.0' "$WORK_DIR/$ARCH.vtool.txt"
+              NORMALIZED_SLICES+=("$THIN_OUTPUT")
+            done
+
+            if [[ "$LIPO_INFO" == Non-fat\ file:* ]]; then
+              cp "${NORMALIZED_SLICES[0]}" "$TMP_BINARY"
+            else
+              xcrun lipo -create "${NORMALIZED_SLICES[@]}" -output "$TMP_BINARY"
+            fi
+
+            chmod 755 "$TMP_BINARY"
+            mv "$TMP_BINARY" "$BINARY"
+            rm -rf "$WORK_DIR"
+
+            test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" = "15.0"
+          done < <(find "$FRAMEWORKS_DIR" -mindepth 2 -maxdepth 2 -name Info.plist -print0)
+
+      - name: Package unsigned Release IPA
+        run: |
+          set -euo pipefail
+          DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
+          APP_PATH="$DERIVED_DATA/Build/Products/Release-iphoneos/Solyvis.app"
+          test -d "$APP_PATH"
+
+          VERSION_NAME="$(tr -d '[:space:]' < VERSION)"
+          PACKAGE_DIR="$RUNNER_TEMP/solyvis-ipa"
+          IPA_PATH="$GITHUB_WORKSPACE/Solyvis-v${VERSION_NAME}-unsigned.ipa"
+
+          rm -rf "$PACKAGE_DIR" "$IPA_PATH"
+          mkdir -p "$PACKAGE_DIR/Payload"
+          ditto "$APP_PATH" "$PACKAGE_DIR/Payload/Solyvis.app"
+          (
+            cd "$PACKAGE_DIR"
+            /usr/bin/zip -qry "$IPA_PATH" Payload
+          )
+
+          test -s "$IPA_PATH"
+          /usr/bin/unzip -l "$IPA_PATH" | head -n 40
+
+      - name: Audit unsigned Release IPA
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(tr -d '[:space:]' < VERSION)"
+          IPA_PATH="$GITHUB_WORKSPACE/Solyvis-v${VERSION_NAME}-unsigned.ipa"
+          AUDIT_DIR="$RUNNER_TEMP/solyvis-release-ipa-audit"
+          APP_PATH="$AUDIT_DIR/Payload/Solyvis.app"
+
+          rm -rf "$AUDIT_DIR"
+          mkdir -p "$AUDIT_DIR"
+          /usr/bin/unzip -q "$IPA_PATH" -d "$AUDIT_DIR"
+
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/Solyvis"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")" = "com.solyan.solyvis"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "$VERSION_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP_PATH/Info.plist")" = "15.0"
+          test ! -e "$APP_PATH/Solyvis.debug.dylib"
+          test ! -e "$APP_PATH/__preview.dylib"
+          test ! -d "$APP_PATH/PlugIns"
+          test -z "$(find "$APP_PATH" -type d -name _CodeSignature -print -quit)"
+          test -z "$(find "$APP_PATH" \( -name embedded.mobileprovision -o -name '*.mobileprovision' \) -print -quit)"
+          test -z "$(find "$APP_PATH" -name '*.appex' -print -quit)"
+
+          audit_macho() {
+            local binary="$1"
+            local work_dir
+            local lipo_info
+            local archs
+            local arch
+            work_dir="$(mktemp -d "$RUNNER_TEMP/solyvis-ipa-audit-macho.XXXXXX")"
+            lipo_info="$(xcrun lipo -info "$binary")"
+            archs="$(xcrun lipo -archs "$binary")"
+            test -n "$archs"
+
+            for arch in $archs; do
+              local thin="$work_dir/$arch"
+              if [[ "$lipo_info" == Non-fat\ file:* ]]; then
+                cp "$binary" "$thin"
+              else
+                xcrun lipo "$binary" -thin "$arch" -output "$thin"
+              fi
+              xcrun vtool -show-build "$thin" > "$work_dir/$arch.vtool.txt"
+              grep -Eq 'minos[[:space:]]+15\.0([[:space:]]|$)' "$work_dir/$arch.vtool.txt"
+            done
+
+            rm -rf "$work_dir"
+          }
+
+          MACHO_COUNT=0
+          audit_macho "$APP_PATH/Solyvis"
+          MACHO_COUNT=$((MACHO_COUNT + 1))
+
+          while IFS= read -r -d '' PLIST; do
+            FRAMEWORK_DIR="$(dirname "$PLIST")"
+            EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" = "15.0"
+            audit_macho "$FRAMEWORK_DIR/$EXECUTABLE"
+            MACHO_COUNT=$((MACHO_COUNT + 1))
+          done < <(find "$APP_PATH/Frameworks" -mindepth 2 -maxdepth 2 -name Info.plist -print0)
+
+          test "$MACHO_COUNT" -gt 1
+          echo "Audited $MACHO_COUNT Mach-O binaries in unsigned Release IPA"
+          shasum -a 256 "$IPA_PATH"
+
+      - name: Upload unsigned Release IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: solyvis-ios15-unsigned-release-ipa
+          path: Solyvis-v*-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload Xcode build log on failure
         if: failure()
