@@ -65,13 +65,13 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Compile Kotlin iOS device framework
+      - name: Compile Kotlin iOS Release device framework
         env:
           GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
         run: |
           set -o pipefail
-          ./gradlew :composeApp:linkDebugFrameworkIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
+          ./gradlew :composeApp:linkReleaseFrameworkIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
 
       - name: Show first Kotlin Native errors
         if: failure()
@@ -94,7 +94,7 @@ jobs:
       - name: Inspect Xcode targets
         run: xcodebuild -project iosApp/iosApp.xcodeproj -list
 
-      - name: Build Solyvis for iOS 15
+      - name: Build Solyvis Release for iOS 15
         env:
           GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
@@ -105,19 +105,30 @@ jobs:
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            ENABLE_PREVIEWS=NO \
             build | tee ios15-xcodebuild.log
+
+      - name: Verify Release app shape
+        run: |
+          set -euo pipefail
+          APP_PATH="$RUNNER_TEMP/SolyvisDerivedData/Build/Products/Release-iphoneos/Solyvis.app"
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/Solyvis"
+          test ! -e "$APP_PATH/Solyvis.debug.dylib"
+          test ! -e "$APP_PATH/__preview.dylib"
+          test ! -d "$APP_PATH/PlugIns"
 
       - name: Normalize embedded framework iOS floor
         run: |
           set -euo pipefail
           DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
-          APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphoneos/Solyvis.app"
+          APP_PATH="$DERIVED_DATA/Build/Products/Release-iphoneos/Solyvis.app"
           FRAMEWORKS_DIR="$APP_PATH/Frameworks"
           SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
 
@@ -182,11 +193,11 @@ jobs:
             test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" = "15.0"
           done < <(find "$FRAMEWORKS_DIR" -mindepth 2 -maxdepth 2 -name Info.plist -print0)
 
-      - name: Package unsigned IPA
+      - name: Package unsigned Release IPA
         run: |
           set -euo pipefail
           DERIVED_DATA="$RUNNER_TEMP/SolyvisDerivedData"
-          APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphoneos/Solyvis.app"
+          APP_PATH="$DERIVED_DATA/Build/Products/Release-iphoneos/Solyvis.app"
           test -d "$APP_PATH"
 
           VERSION_NAME="$(tr -d '[:space:]' < VERSION)"
@@ -204,10 +215,10 @@ jobs:
           test -s "$IPA_PATH"
           /usr/bin/unzip -l "$IPA_PATH" | head -n 40
 
-      - name: Upload unsigned IPA
+      - name: Upload unsigned Release IPA
         uses: actions/upload-artifact@v4
         with:
-          name: solyvis-ios15-unsigned-ipa
+          name: solyvis-ios15-unsigned-release-ipa
           path: Solyvis-v*-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
