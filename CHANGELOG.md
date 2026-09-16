@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4 — Branding
+
+- Bumped product version to 0.1.4 / build 5.
+- Added the official Solyvis light and dark branding master artwork to the iOS asset catalog.
+- Wired `AppIcon.appiconset` to provide dedicated light and dark 1024×1024 App Store artwork.
+- Added a shared-scheme pre-build action that center-crops the official Solyvis master artwork to exact 1024×1024 AppIcon assets before every Xcode build, avoiding a second manually maintained binary copy.
+- Kept the existing iOS 15 Release/unsigned IPA audit pipeline unchanged for artifact validation.
+
 ## 0.1.3 — Development
 
 - Started from the validated v0.1.2 iOS 15 compatibility baseline.
