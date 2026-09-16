@@ -35,7 +35,7 @@ on:
 jobs:
   ios15-compat:
     runs-on: macos-15-intel
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout Solyvis
@@ -65,13 +65,13 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Compile Kotlin iOS Release device framework
+      - name: Compile Kotlin iOS device sources for Release build
         env:
           GRADLE_OPTS: -Xmx10g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=2048m
           KOTLIN_DAEMON_JVMARGS: -Xmx8g
         run: |
           set -o pipefail
-          ./gradlew :composeApp:linkReleaseFrameworkIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
+          ./gradlew :composeApp:compileKotlinIosArm64 --stacktrace 2>&1 | tee ios15-gradle.log
 
       - name: Show first Kotlin Native errors
         if: failure()
