@@ -215,6 +215,71 @@ jobs:
           test -s "$IPA_PATH"
           /usr/bin/unzip -l "$IPA_PATH" | head -n 40
 
+      - name: Audit unsigned Release IPA
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(tr -d '[:space:]' < VERSION)"
+          IPA_PATH="$GITHUB_WORKSPACE/Solyvis-v${VERSION_NAME}-unsigned.ipa"
+          AUDIT_DIR="$RUNNER_TEMP/solyvis-release-ipa-audit"
+          APP_PATH="$AUDIT_DIR/Payload/Solyvis.app"
+
+          rm -rf "$AUDIT_DIR"
+          mkdir -p "$AUDIT_DIR"
+          /usr/bin/unzip -q "$IPA_PATH" -d "$AUDIT_DIR"
+
+          test -d "$APP_PATH"
+          test -f "$APP_PATH/Solyvis"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")" = "com.solyan.solyvis"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Info.plist")" = "$VERSION_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP_PATH/Info.plist")" = "15.0"
+          test ! -e "$APP_PATH/Solyvis.debug.dylib"
+          test ! -e "$APP_PATH/__preview.dylib"
+          test ! -d "$APP_PATH/PlugIns"
+          test -z "$(find "$APP_PATH" -type d -name _CodeSignature -print -quit)"
+          test -z "$(find "$APP_PATH" \( -name embedded.mobileprovision -o -name '*.mobileprovision' \) -print -quit)"
+          test -z "$(find "$APP_PATH" -name '*.appex' -print -quit)"
+
+          audit_macho() {
+            local binary="$1"
+            local work_dir
+            local lipo_info
+            local archs
+            local arch
+            work_dir="$(mktemp -d "$RUNNER_TEMP/solyvis-ipa-audit-macho.XXXXXX")"
+            lipo_info="$(xcrun lipo -info "$binary")"
+            archs="$(xcrun lipo -archs "$binary")"
+            test -n "$archs"
+
+            for arch in $archs; do
+              local thin="$work_dir/$arch"
+              if [[ "$lipo_info" == Non-fat\ file:* ]]; then
+                cp "$binary" "$thin"
+              else
+                xcrun lipo "$binary" -thin "$arch" -output "$thin"
+              fi
+              xcrun vtool -show-build "$thin" > "$work_dir/$arch.vtool.txt"
+              grep -Eq 'minos[[:space:]]+15\.0([[:space:]]|$)' "$work_dir/$arch.vtool.txt"
+            done
+
+            rm -rf "$work_dir"
+          }
+
+          MACHO_COUNT=0
+          audit_macho "$APP_PATH/Solyvis"
+          MACHO_COUNT=$((MACHO_COUNT + 1))
+
+          while IFS= read -r -d '' PLIST; do
+            FRAMEWORK_DIR="$(dirname "$PLIST")"
+            EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" = "15.0"
+            audit_macho "$FRAMEWORK_DIR/$EXECUTABLE"
+            MACHO_COUNT=$((MACHO_COUNT + 1))
+          done < <(find "$APP_PATH/Frameworks" -mindepth 2 -maxdepth 2 -name Info.plist -print0)
+
+          test "$MACHO_COUNT" -gt 1
+          echo "Audited $MACHO_COUNT Mach-O binaries in unsigned Release IPA"
+          shasum -a 256 "$IPA_PATH"
+
       - name: Upload unsigned Release IPA
         uses: actions/upload-artifact@v4
         with:
