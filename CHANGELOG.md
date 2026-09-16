@@ -4,6 +4,13 @@
 
 - Started from the validated v0.1.2 iOS 15 compatibility baseline.
 - Bumped product version to 0.1.3 / build 4 for the next development stage.
+- Switched the sideload artifact pipeline to a clean unsigned iOS `Release` build.
+- Package the device build deterministically as `Solyvis-v0.1.3-unsigned.ipa` with `Payload/Solyvis.app`.
+- Normalize the embedded MPVKit/FFmpeg framework Mach-O deployment floor to iOS 15.0 after build, including FAT containers by extracting, rewriting and reassembling architecture slices.
+- Keep framework `Info.plist` deployment floors synchronized at `MinimumOSVersion = 15.0`.
+- Reject Release artifacts containing Debug/preview dylibs, embedded app extensions, code-signature directories or provisioning profiles.
+- Audit the packaged IPA in CI before upload, including bundle identity/version and Mach-O minOS validation for the main executable and every embedded framework slice.
+- Run #28 produced and independently validated a clean unsigned Release IPA with 28 audited Mach-O binaries, all at iOS 15.0.
 
 ## 0.1.2 — iOS 15 Baseline
 
