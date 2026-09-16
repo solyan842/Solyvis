@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5 — Local-only
+
+- Switched startup authentication to a stable local installation identity and removed Supabase auth/session observation from the runtime path.
+- Disabled email account sign-in, sign-up, account deletion, and server-switch auth operations in the local-only build while retaining source-compatible repository APIs.
+- Disabled membership entitlement polling and remote membership verification.
+- Changed the profile avatar catalog to cache-only operation so startup/profile editing no longer requests Supabase avatar or member-asset catalogs.
+- Kept local profile/settings persistence and the existing iOS 15 unsigned Release IPA validation pipeline intact.
+- Bumped product version to 0.1.5 / build 6.
+
 ## 0.1.4 — Branding
 
 - Bumped product version to 0.1.4 / build 5.
