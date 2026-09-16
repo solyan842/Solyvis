@@ -62,6 +62,11 @@ import nuvio.composeapp.generated.resources.settings_appearance_app_icon_sheet_t
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
+private val visibleSolyvisAppIcons = listOf(
+    AppIconOption.ORIGINAL,
+    AppIconOption.GRAPHITE,
+)
+
 @Composable
 internal fun AppIconPicker(
     isTablet: Boolean,
@@ -160,7 +165,7 @@ private fun AppIconPickerDialog(
         ) {
             AppIconPickerContent(
                 state = state,
-                columns = 3,
+                columns = 2,
                 onSelected = onSelected,
             )
         }
@@ -208,15 +213,19 @@ private fun AppIconPickerContent(
 
         Spacer(modifier = Modifier.height(18.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppIconOption.entries.chunked(columns).forEach { rowIcons ->
+            visibleSolyvisAppIcons.chunked(columns).forEach { rowIcons ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     rowIcons.forEach { icon ->
+                        val isSelected = when (icon) {
+                            AppIconOption.GRAPHITE -> state.selected == AppIconOption.GRAPHITE
+                            else -> state.selected != AppIconOption.GRAPHITE
+                        }
                         AppIconChoice(
                             icon = icon,
-                            selected = state.selected == icon,
+                            selected = isSelected,
                             pending = state.pending == icon,
                             enabled = state.pending == null,
                             onClick = { onSelected(icon) },
@@ -242,7 +251,7 @@ private fun AppIconChoice(
     modifier: Modifier = Modifier,
 ) {
     val tokens = MaterialTheme.nuvio
-    val label = stringResource(icon.labelResource)
+    val label = if (icon == AppIconOption.GRAPHITE) "Dark" else "Light"
     Surface(
         onClick = onClick,
         modifier = modifier.semantics { this.selected = selected },
