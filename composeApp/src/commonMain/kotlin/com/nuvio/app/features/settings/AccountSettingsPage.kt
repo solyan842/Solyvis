@@ -55,6 +55,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun LazyListScope.accountSettingsContent(
     isTablet: Boolean,
 ) {
+    if (!AppFeaturePolicy.accountServicesEnabled) return
     item {
         AccountSettingsBody(isTablet = isTablet)
     }

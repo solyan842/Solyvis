@@ -1408,7 +1408,11 @@ internal fun MainAppContent(
                                         navController.navigate(PluginsSettingsRoute(pluginsSettingsTitle))
                                     }
                                 },
-                                onAccountSettingsClick = { navController.navigate(AccountSettingsRoute(accountSettingsTitle)) },
+                                onAccountSettingsClick = {
+                                    if (AppFeaturePolicy.accountServicesEnabled) {
+                                        navController.navigate(AccountSettingsRoute(accountSettingsTitle))
+                                    }
+                                },
                                 onSupportersContributorsSettingsClick = {
                                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
                                         navController.navigate(SupportersContributorsSettingsRoute(supportersSettingsTitle))

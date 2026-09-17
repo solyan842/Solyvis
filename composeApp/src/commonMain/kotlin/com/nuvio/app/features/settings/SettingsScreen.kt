@@ -100,8 +100,9 @@ private val SettingsSearchRevealThreshold = 28.dp
 private const val SettingsSearchRevealAnimationMillis = 240L
 private const val SettingsSearchRevealHapticDelayMillis = 90L
 
-private fun SettingsPage.isEnabledByPolicy(): Boolean =
+internal fun SettingsPage.isEnabledByPolicy(): Boolean =
     when (this) {
+        SettingsPage.Account -> AppFeaturePolicy.accountServicesEnabled
         SettingsPage.SupportersContributors -> AppFeaturePolicy.supportersContributorsPageEnabled
         else -> true
     }
@@ -315,7 +316,9 @@ fun SettingsScreen(
         } else {
             onPluginsClick
         }
-        val openAccount = if (onNavigatePage != null) {
+        val openAccount: () -> Unit = if (!AppFeaturePolicy.accountServicesEnabled) {
+            {}
+        } else if (onNavigatePage != null) {
             { openPage(SettingsPage.Account) }
         } else {
             onAccountClick
@@ -602,6 +605,7 @@ private fun MobileSettingsScreen(
             }
         }
         fun openSearchTarget(target: SettingsSearchTarget) {
+            if (target is SettingsSearchTarget.Page && !target.page.isEnabledByPolicy()) return
             when (target) {
                 is SettingsSearchTarget.Page -> when (target.page) {
                     SettingsPage.Account -> onAccountClick()
@@ -954,6 +958,7 @@ private fun TabletSettingsScreen(
     }
 
     fun openInlinePage(page: SettingsPage) {
+        if (!page.isEnabledByPolicy()) return
         selectedCategory = page.category.name
         onPageChange(page)
     }

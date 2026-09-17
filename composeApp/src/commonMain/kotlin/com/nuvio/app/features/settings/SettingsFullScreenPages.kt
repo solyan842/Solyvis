@@ -191,6 +191,10 @@ fun PluginsSettingsScreen(
 fun AccountSettingsScreen(
     onBack: () -> Unit,
 ) {
+    if (!AppFeaturePolicy.accountServicesEnabled) {
+        LaunchedEffect(Unit) { onBack() }
+        return
+    }
     NuvioScreen(
         modifier = Modifier.fillMaxSize(),
     ) {

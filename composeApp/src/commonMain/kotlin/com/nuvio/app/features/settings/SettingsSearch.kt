@@ -127,6 +127,7 @@ internal fun settingsSearchEntries(
         icon: ImageVector,
         target: SettingsSearchTarget,
     ) {
+        if (target is SettingsSearchTarget.Page && !target.page.isEnabledByPolicy()) return
         entries += SettingsSearchEntry(
             key = key,
             title = title,
