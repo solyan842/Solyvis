@@ -2,7 +2,6 @@ package com.nuvio.app.core.auth
 
 sealed interface AuthState {
     data object Loading : AuthState
-    data object Unauthenticated : AuthState
     data class Authenticated(
         val userId: String,
         val email: String?,

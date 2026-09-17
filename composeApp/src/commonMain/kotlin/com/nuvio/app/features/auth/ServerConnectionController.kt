@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class ServerSwitchFailure {
-    SessionClear,
     Save,
     Restart,
 }
@@ -102,12 +101,6 @@ object ServerConnectionController {
         scope.launch {
             _state.update { it.copy(isSwitching = true, failure = null, switchFailure = null) }
             try {
-                if (AuthRepository.prepareForServerSwitch().isFailure) {
-                    _state.update {
-                        it.copy(isSwitching = false, switchFailure = ServerSwitchFailure.SessionClear)
-                    }
-                    return@launch
-                }
                 if (!save()) {
                     _state.update { it.copy(isSwitching = false, switchFailure = ServerSwitchFailure.Save) }
                     return@launch

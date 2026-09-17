@@ -1,7 +1,5 @@
 package com.nuvio.app.features.profiles
 
-import com.nuvio.app.core.build.AppFeaturePolicy
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -82,8 +80,6 @@ fun ProfileEditScreen(
     var usesPrimaryAddons by rememberSaveable { mutableStateOf(currentProfile?.usesPrimaryAddons ?: false) }
     var isSaving by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showPinSetup by remember { mutableStateOf(false) }
-    var showPinClear by remember { mutableStateOf(false) }
     val memberAccess by remember {
         MemberAccessRepository.ensureStarted()
         MemberAccessRepository.access
@@ -236,7 +232,7 @@ fun ProfileEditScreen(
             }
         }
 
-        if (!isNew && (AppFeaturePolicy.accountServicesEnabled || currentProfile?.pinEnabled == true)) {
+        if (!isNew && currentProfile?.pinEnabled == true) {
             item {
                 NuvioSurfaceCard {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -254,19 +250,6 @@ fun ProfileEditScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (AppFeaturePolicy.accountServicesEnabled) {
-                            if (currentProfile?.pinEnabled == true) {
-                                NuvioPrimaryButton(
-                                    text = stringResource(Res.string.profile_remove_pin_lock),
-                                    onClick = { showPinClear = true },
-                                )
-                            } else {
-                                NuvioPrimaryButton(
-                                    text = stringResource(Res.string.profile_set_pin_lock),
-                                    onClick = { showPinSetup = true },
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -357,29 +340,6 @@ fun ProfileEditScreen(
         onDismiss = { showDeleteConfirm = false },
     )
 
-    if (AppFeaturePolicy.accountServicesEnabled && showPinSetup && currentProfile != null) {
-        PinSetupDialog(
-            profileIndex = currentProfile.profileIndex,
-            hasExistingPin = currentProfile.pinEnabled,
-            onDone = {
-                showPinSetup = false
-            },
-            onDismiss = { showPinSetup = false },
-        )
-    }
-
-    if (AppFeaturePolicy.accountServicesEnabled && showPinClear && currentProfile != null) {
-        PinEntryDialog(
-            profileName = stringResource(Res.string.profile_remove_pin_for, currentProfile.name),
-            onVerify = { pin -> ProfileRepository.clearPin(currentProfile.profileIndex, pin) },
-            onVerified = {
-                showPinClear = false
-            },
-            onDismiss = {
-                showPinClear = false
-            },
-        )
-    }
 }
 
 @Composable
@@ -556,45 +516,6 @@ private fun ProfileOptionRow(
                 uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant,
             ),
-        )
-    }
-}
-
-@Composable
-fun PinSetupDialog(
-    profileIndex: Int,
-    hasExistingPin: Boolean,
-    onDone: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var step by remember { mutableStateOf(if (hasExistingPin) "current" else "new") }
-    var currentPin by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
-
-    when (step) {
-        "current" -> PinEntryDialog(
-            profileName = stringResource(Res.string.profile_enter_current_pin),
-            onVerify = { pin -> ProfileRepository.verifyPin(profileIndex, pin) },
-            onVerified = { pin ->
-                currentPin = pin
-                step = "new"
-            },
-            onDismiss = onDismiss,
-        )
-
-        "new" -> PinEntryDialog(
-            profileName = stringResource(Res.string.profile_enter_new_pin),
-            onVerify = { pin ->
-                ProfileRepository.setPin(
-                    profileIndex = profileIndex,
-                    pin = pin,
-                    currentPin = currentPin.ifEmpty { null },
-                )
-            },
-            onVerified = {
-                onDone()
-            },
-            onDismiss = onDismiss,
         )
     }
 }

@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_settings_category_about
 import nuvio.composeapp.generated.resources.compose_settings_category_general
-import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_addons
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
 import nuvio.composeapp.generated.resources.compose_settings_page_appearance
@@ -54,11 +53,6 @@ internal enum class SettingsPage(
         titleRes = Res.string.compose_settings_page_root,
         category = SettingsCategory.General,
         parentPage = null,
-    ),
-    Account(
-        titleRes = Res.string.compose_settings_page_account,
-        category = SettingsCategory.Account,
-        parentPage = Root,
     ),
     SupportersContributors(
         titleRes = Res.string.compose_settings_page_supporters_contributors,

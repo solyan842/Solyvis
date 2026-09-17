@@ -66,7 +66,6 @@ import nuvio.composeapp.generated.resources.server_error_official_available
 import nuvio.composeapp.generated.resources.server_error_response_too_large
 import nuvio.composeapp.generated.resources.server_error_restart
 import nuvio.composeapp.generated.resources.server_error_save
-import nuvio.composeapp.generated.resources.server_error_session_clear
 import nuvio.composeapp.generated.resources.server_error_service
 import nuvio.composeapp.generated.resources.server_error_version
 import nuvio.composeapp.generated.resources.server_menu_change_custom
@@ -495,7 +494,6 @@ private fun serverDiscoveryError(state: ServerConnectionUiState): String? {
 @Composable
 private fun serverSwitchError(failure: ServerSwitchFailure): String =
     when (failure) {
-        ServerSwitchFailure.SessionClear -> stringResource(Res.string.server_error_session_clear)
         ServerSwitchFailure.Save -> stringResource(Res.string.server_error_save)
         ServerSwitchFailure.Restart -> stringResource(Res.string.server_error_restart)
     }

@@ -102,7 +102,6 @@ private const val SettingsSearchRevealHapticDelayMillis = 90L
 
 internal fun SettingsPage.isEnabledByPolicy(): Boolean =
     when (this) {
-        SettingsPage.Account -> AppFeaturePolicy.accountServicesEnabled
         SettingsPage.SupportersContributors -> AppFeaturePolicy.supportersContributorsPageEnabled
         else -> true
     }
@@ -134,7 +133,6 @@ fun SettingsScreen(
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
     onDownloadsClick: () -> Unit = {},
-    onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
@@ -316,13 +314,6 @@ fun SettingsScreen(
         } else {
             onPluginsClick
         }
-        val openAccount: () -> Unit = if (!AppFeaturePolicy.accountServicesEnabled) {
-            {}
-        } else if (onNavigatePage != null) {
-            { openPage(SettingsPage.Account) }
-        } else {
-            onAccountClick
-        }
         val openSupportersContributors = if (onNavigatePage != null) {
             { openPage(SettingsPage.SupportersContributors) }
         } else {
@@ -500,7 +491,6 @@ fun SettingsScreen(
                 onAddonsClick = openAddons,
                 onPluginsClick = openPlugins,
                 onDownloadsClick = onDownloadsClick,
-                onAccountClick = openAccount,
                 onSupportersContributorsClick = openSupportersContributors,
                 onLicensesAttributionsClick = openLicensesAttributions,
                 onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -576,7 +566,6 @@ private fun MobileSettingsScreen(
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
     onDownloadsClick: () -> Unit = {},
-    onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
@@ -608,7 +597,6 @@ private fun MobileSettingsScreen(
             if (target is SettingsSearchTarget.Page && !target.page.isEnabledByPolicy()) return
             when (target) {
                 is SettingsSearchTarget.Page -> when (target.page) {
-                    SettingsPage.Account -> onAccountClick()
                     SettingsPage.SupportersContributors -> {
                         if (AppFeaturePolicy.supportersContributorsPageEnabled) {
                             onSupportersContributorsClick()
@@ -670,7 +658,6 @@ private fun MobileSettingsScreen(
                             settingsSearchEntries(
                                 pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
                                 supportersContributorsPageEnabled = AppFeaturePolicy.supportersContributorsPageEnabled,
-                                accountDeletionEnabled = AppFeaturePolicy.accountDeletionEnabled,
                                 personalMediaAddonCopyEnabled = AppFeaturePolicy.personalMediaAddonCopyEnabled,
                                 liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                                 switchProfileAvailable = onSwitchProfile != null,
@@ -698,15 +685,11 @@ private fun MobileSettingsScreen(
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
                             onTestUpdateBannerClick = onTestUpdateBannerClick,
                             onDownloadsClick = onDownloadsClick,
-                            onAccountClick = onAccountClick,
                             onSwitchProfileClick = onSwitchProfile,
                             showSupportersContributorsPage = AppFeaturePolicy.supportersContributorsPageEnabled,
                         )
                     }
                 }
-                SettingsPage.Account -> accountSettingsContent(
-                    isTablet = false,
-                )
                 SettingsPage.SupportersContributors -> {
                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
                         supportersContributorsContent(isTablet = false)
@@ -1091,7 +1074,6 @@ private fun TabletSettingsScreen(
                                 settingsSearchEntries(
                                     pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
                                     supportersContributorsPageEnabled = AppFeaturePolicy.supportersContributorsPageEnabled,
-                                    accountDeletionEnabled = AppFeaturePolicy.accountDeletionEnabled,
                                     personalMediaAddonCopyEnabled = AppFeaturePolicy.personalMediaAddonCopyEnabled,
                                     liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                                     switchProfileAvailable = onSwitchProfile != null,
@@ -1119,7 +1101,6 @@ private fun TabletSettingsScreen(
                                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                                 onTestUpdateBannerClick = onTestUpdateBannerClick,
                                 onDownloadsClick = onDownloadsClick,
-                                onAccountClick = { openInlinePage(SettingsPage.Account) },
                                 onSwitchProfileClick = onSwitchProfile,
                                 showAccountSection = activeCategory == SettingsCategory.Account,
                                 showGeneralSection = activeCategory == SettingsCategory.General,
@@ -1129,9 +1110,6 @@ private fun TabletSettingsScreen(
                             )
                         }
                     }
-                    SettingsPage.Account -> accountSettingsContent(
-                        isTablet = true,
-                    )
                     SettingsPage.SupportersContributors -> {
                         if (AppFeaturePolicy.supportersContributorsPageEnabled) {
                             supportersContributorsContent(isTablet = true)
