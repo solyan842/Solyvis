@@ -26,15 +26,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val appVersionCode: Property<Int>
 
     @get:Input
-    abstract val supabaseUrl: Property<String>
-
-    @get:Input
-    abstract val supabaseAnonKey: Property<String>
-
-    @get:Input
-    abstract val supabaseFallbackUrl: Property<String>
-
-    @get:Input
     abstract val sentryDsn: Property<String>
 
     @get:Input
@@ -49,21 +40,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
         localPropertiesFile.asFile.orNull?.takeIf { it.exists() }?.inputStream()?.use { props.load(it) }
 
         val outDir = outputDir.get().asFile
-        outDir.resolve("com/nuvio/app/core/network").apply {
-            mkdirs()
-            resolve("SupabaseConfig.kt").writeText(
-                """
-                |package com.nuvio.app.core.network
-                |
-                |object SupabaseConfig {
-                |    const val URL = "${supabaseUrl.get()}"
-                |    const val ANON_KEY = "${supabaseAnonKey.get()}"
-                |    const val FALLBACK_URL = "${supabaseFallbackUrl.get()}"
-                |}
-                """.trimMargin()
-            )
-        }
-
         outDir.resolve("com/nuvio/app/core/diagnostics").apply {
             mkdirs()
             resolve("SentryConfig.kt").writeText(
@@ -219,7 +195,7 @@ compose.resources {
     packageOfResClass = "nuvio.composeapp.generated.resources"
 }
 
-val supabaseProps = Properties().apply {
+val localProperties = Properties().apply {
     val propsFile = rootProject.file("local.properties")
     if (propsFile.exists()) propsFile.inputStream().use { load(it) }
 }
@@ -232,7 +208,7 @@ val releaseAppVersionCode = readXcconfigValue(appVersionConfigFile, "CURRENT_PRO
 val iosDistribution = (
     providers.gradleProperty("nuvio.ios.distribution").orNull
         ?: System.getenv("NUVIO_IOS_DISTRIBUTION")
-        ?: supabaseProps.getProperty("NUVIO_IOS_DISTRIBUTION")
+        ?: localProperties.getProperty("NUVIO_IOS_DISTRIBUTION")
         ?: "appstore"
     ).trim().lowercase()
 require(iosDistribution == "appstore" || iosDistribution == "full") {
@@ -261,7 +237,7 @@ require(requestedAndroidDistributions.size <= 1) {
     "Build Android full and playstore distributions separately, or set -Pnuvio.android.distribution=full|playstore."
 }
 val configuredAndroidDistribution = providers.gradleProperty("nuvio.android.distribution").orNull
-    ?: supabaseProps.getProperty("NUVIO_ANDROID_DISTRIBUTION")
+    ?: localProperties.getProperty("NUVIO_ANDROID_DISTRIBUTION")
 val isAmbiguousAndroidPackageTask = requestedGradleTasks.any { taskName ->
     taskName == "build" ||
         taskName.startsWith("assemble") ||
@@ -304,15 +280,12 @@ fun runtimeConfigBoolean(key: String, default: Boolean): Boolean =
 
 val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generateRuntimeConfigs") {
     outputDir.set(generatedRuntimeConfigDir)
-    val localProperties = rootProject.layout.projectDirectory.file("local.properties")
-    if (localProperties.asFile.exists()) {
-        localPropertiesFile.set(localProperties)
+    val localPropertiesFileRef = rootProject.layout.projectDirectory.file("local.properties")
+    if (localPropertiesFileRef.asFile.exists()) {
+        localPropertiesFile.set(localPropertiesFileRef)
     }
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
-    supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL"))
-    supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY"))
-    supabaseFallbackUrl.set(runtimeConfigValue("NUVIO_SUPABASE_FALLBACK_URL"))
     sentryDsn.set(runtimeConfigValue("SENTRY_DSN"))
     tmdbApiKey.set(runtimeConfigValue("TMDB_API_KEY"))
     sentryEnvironment.set(
@@ -496,10 +469,6 @@ kotlin {
             implementation(libs.kmpalette.core)
             implementation(libs.androidx.navigation3.ui)
             implementation(libs.kermit)
-            implementation(libs.supabase.postgrest)
-            implementation(libs.supabase.auth)
-            implementation(libs.supabase.functions)
-            implementation(libs.supabase.storage)
             implementation(libs.reorderable)
         }
         commonTest.dependencies {
