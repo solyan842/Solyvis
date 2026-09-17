@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.8 — Dead backend cleanup
+
+- Removed the obsolete generated `SupabaseConfig` and the unused `NUVIO_SUPABASE_URL`, `NUVIO_SUPABASE_ANON_KEY`, and `NUVIO_SUPABASE_FALLBACK_URL` build inputs.
+- Removed unused Supabase Auth, PostgREST, Functions, and Storage dependencies from the shared runtime and version catalog.
+- Renamed the remaining local build-properties holder so distribution settings no longer carry a misleading Supabase-specific name.
+- Preserved local profiles, Tracking integrations, custom server switching, iOS 15 support, Solyvis branding, and GPL provenance.
+- Bumped product version to 0.1.8 / build 9.
+
 ## 0.1.7 — Remove legacy account runtime
 
 - Removed the Login/Create Account, Device Link, and Account Settings UI/source modules.
