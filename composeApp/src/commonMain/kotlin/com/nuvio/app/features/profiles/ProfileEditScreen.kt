@@ -1,5 +1,7 @@
 package com.nuvio.app.features.profiles
 
+import com.nuvio.app.core.build.AppFeaturePolicy
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -234,7 +236,7 @@ fun ProfileEditScreen(
             }
         }
 
-        if (!isNew) {
+        if (!isNew && (AppFeaturePolicy.accountServicesEnabled || currentProfile?.pinEnabled == true)) {
             item {
                 NuvioSurfaceCard {
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -252,16 +254,18 @@ fun ProfileEditScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (currentProfile?.pinEnabled == true) {
-                            NuvioPrimaryButton(
-                                text = stringResource(Res.string.profile_remove_pin_lock),
-                                onClick = { showPinClear = true },
-                            )
-                        } else {
-                            NuvioPrimaryButton(
-                                text = stringResource(Res.string.profile_set_pin_lock),
-                                onClick = { showPinSetup = true },
-                            )
+                        if (AppFeaturePolicy.accountServicesEnabled) {
+                            if (currentProfile?.pinEnabled == true) {
+                                NuvioPrimaryButton(
+                                    text = stringResource(Res.string.profile_remove_pin_lock),
+                                    onClick = { showPinClear = true },
+                                )
+                            } else {
+                                NuvioPrimaryButton(
+                                    text = stringResource(Res.string.profile_set_pin_lock),
+                                    onClick = { showPinSetup = true },
+                                )
+                            }
                         }
                     }
                 }
@@ -353,7 +357,7 @@ fun ProfileEditScreen(
         onDismiss = { showDeleteConfirm = false },
     )
 
-    if (showPinSetup && currentProfile != null) {
+    if (AppFeaturePolicy.accountServicesEnabled && showPinSetup && currentProfile != null) {
         PinSetupDialog(
             profileIndex = currentProfile.profileIndex,
             hasExistingPin = currentProfile.pinEnabled,
@@ -364,7 +368,7 @@ fun ProfileEditScreen(
         )
     }
 
-    if (showPinClear && currentProfile != null) {
+    if (AppFeaturePolicy.accountServicesEnabled && showPinClear && currentProfile != null) {
         PinEntryDialog(
             profileName = stringResource(Res.string.profile_remove_pin_for, currentProfile.name),
             onVerify = { pin -> ProfileRepository.clearPin(currentProfile.profileIndex, pin) },
