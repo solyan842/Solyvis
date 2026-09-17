@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6 — Local-only hardening
+
+- Hide Account and its search results while keeping profile switching and Tracking available on phone and tablet.
+- Reject Account navigation, including restored native routes and direct Settings page requests.
+- Recover legacy authentication gates into the stable local session and disable device-link startup.
+- Prevent remote profile/PIN RPCs in local-only mode; retain local profile persistence and cached PIN verification. Remote PIN setup/reset remains unavailable.
+- Bumped product version to 0.1.6 / build 7.
+
 ## 0.1.5 — Local-only
 
 - Switched startup authentication to a stable local installation identity and removed Supabase auth/session observation from the runtime path.

@@ -10,6 +10,7 @@ expect object AppFeaturePolicy {
     val supportersContributorsPageEnabled: Boolean
     val donationActionsEnabled: Boolean
     val donationProgressEnabled: Boolean
+    val accountServicesEnabled: Boolean
     val accountDeletionEnabled: Boolean
     val personalMediaAddonCopyEnabled: Boolean
     val p2pEnabled: Boolean

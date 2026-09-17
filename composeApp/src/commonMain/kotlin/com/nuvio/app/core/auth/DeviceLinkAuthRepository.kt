@@ -1,5 +1,6 @@
 package com.nuvio.app.core.auth
 
+import com.nuvio.app.core.build.AppFeaturePolicy
 import co.touchlab.kermit.Logger
 import com.nuvio.app.core.network.ServerConfiguration
 import com.nuvio.app.core.network.ServerConfigurationRepository
@@ -62,6 +63,10 @@ object DeviceLinkAuthRepository {
 
     @OptIn(ExperimentalUuidApi::class)
     fun start() {
+        if (!AppFeaturePolicy.accountServicesEnabled) {
+            cancel()
+            return
+        }
         if (_state.value is DeviceLinkAuthState.Starting || _state.value is DeviceLinkAuthState.Waiting) return
 
         activeJob?.cancel()

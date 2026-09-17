@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.auth.isAnonymous
+import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.network.SupabaseProvider
 import com.nuvio.app.core.sync.ProfileSettingsSync
 import com.nuvio.app.core.sync.putSyncOriginClientId
@@ -120,7 +121,7 @@ object ProfileRepository {
     }
 
     suspend fun pullProfiles() {
-        if (AuthRepository.state.value.isAnonymous) {
+        if (!AppFeaturePolicy.accountServicesEnabled || AuthRepository.state.value.isAnonymous) {
             if (!_state.value.isLoaded) {
                 _state.value = _state.value.copy(isLoaded = true)
             }
@@ -190,7 +191,7 @@ object ProfileRepository {
     }
 
     suspend fun pushProfiles(profiles: List<ProfilePushPayload>) {
-        if (AuthRepository.state.value.isAnonymous) {
+        if (!AppFeaturePolicy.accountServicesEnabled || AuthRepository.state.value.isAnonymous) {
             applyPayloadsLocally(profiles)
             return
         }
@@ -283,7 +284,7 @@ object ProfileRepository {
     }
 
     suspend fun deleteProfile(profileIndex: Int) {
-        if (AuthRepository.state.value.isAnonymous) {
+        if (!AppFeaturePolicy.accountServicesEnabled || AuthRepository.state.value.isAnonymous) {
             val remaining = _state.value.profiles.filter { it.profileIndex != profileIndex }
             ProfilePinCacheStorage.removePayload(profileIndex)
             _state.value = _state.value.copy(
@@ -310,7 +311,9 @@ object ProfileRepository {
     }
 
     suspend fun verifyPin(profileIndex: Int, pin: String): PinVerifyResult {
-        if (AuthRepository.state.value !is AuthState.Authenticated) {
+        if (!AppFeaturePolicy.accountServicesEnabled ||
+            AuthRepository.state.value !is AuthState.Authenticated || AuthRepository.state.value.isAnonymous
+        ) {
             return verifyPinLocally(profileIndex, pin)
         }
 
@@ -333,7 +336,9 @@ object ProfileRepository {
     }
 
     suspend fun setPin(profileIndex: Int, pin: String, currentPin: String? = null): PinVerifyResult {
-        if (AuthRepository.state.value !is AuthState.Authenticated) {
+        if (!AppFeaturePolicy.accountServicesEnabled ||
+            AuthRepository.state.value !is AuthState.Authenticated || AuthRepository.state.value.isAnonymous
+        ) {
             return PinVerifyResult(unlocked = false, message = getString(Res.string.profile_pin_set_requires_internet))
         }
 
@@ -355,7 +360,9 @@ object ProfileRepository {
     }
 
     suspend fun clearPin(profileIndex: Int, currentPin: String? = null): PinVerifyResult {
-        if (AuthRepository.state.value !is AuthState.Authenticated) {
+        if (!AppFeaturePolicy.accountServicesEnabled ||
+            AuthRepository.state.value !is AuthState.Authenticated || AuthRepository.state.value.isAnonymous
+        ) {
             return PinVerifyResult(unlocked = false, message = getString(Res.string.profile_pin_clear_requires_internet))
         }
 
@@ -376,6 +383,9 @@ object ProfileRepository {
     }
 
     suspend fun clearPinWithPassword(profileIndex: Int, accountPassword: String) {
+        if (!AppFeaturePolicy.accountServicesEnabled ||
+            AuthRepository.state.value !is AuthState.Authenticated || AuthRepository.state.value.isAnonymous
+        ) return
         runCatching {
             val params = buildJsonObject {
                 put("p_account_password", accountPassword)
@@ -390,6 +400,9 @@ object ProfileRepository {
     }
 
     suspend fun pullProfileLocks(): List<ProfileLockState> {
+        if (!AppFeaturePolicy.accountServicesEnabled ||
+            AuthRepository.state.value !is AuthState.Authenticated || AuthRepository.state.value.isAnonymous
+        ) return emptyList()
         return runCatching {
             val result = SupabaseProvider.client.postgrest.rpc("sync_pull_profile_locks")
             result.decodeList<ProfileLockState>()

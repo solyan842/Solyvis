@@ -5,6 +5,7 @@ actual object AppFeaturePolicy {
     actual val supportersContributorsPageEnabled: Boolean = true
     actual val donationActionsEnabled: Boolean = true
     actual val donationProgressEnabled: Boolean = false
+    actual val accountServicesEnabled: Boolean = false
     actual val accountDeletionEnabled: Boolean = false
     actual val personalMediaAddonCopyEnabled: Boolean = false
     actual val p2pEnabled: Boolean = true

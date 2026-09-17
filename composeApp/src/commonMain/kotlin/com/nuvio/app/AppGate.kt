@@ -34,6 +34,7 @@ import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.PlatformBackHandler
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.membership.MemberAccessRepository
 import com.nuvio.app.features.profiles.AvatarRepository
@@ -312,7 +313,9 @@ internal fun AppGate(
                 }
             }
             is AuthState.Unauthenticated -> {
-                if (allowCachedProfileAccess) {
+                if (!AppFeaturePolicy.accountServicesEnabled) {
+                    AuthRepository.signInAnonymously()
+                } else if (allowCachedProfileAccess) {
                     enterProfileGate(cachedProfiles, syncOnEnter = false)
                 } else {
                     ProfileRepository.clearInMemory()
@@ -429,7 +432,11 @@ internal fun AppGate(
                     }
                 }
                 AppGateScreen.Auth.name -> {
-                    AuthScreen(modifier = Modifier.fillMaxSize())
+                    if (AppFeaturePolicy.accountServicesEnabled) {
+                        AuthScreen(modifier = Modifier.fillMaxSize())
+                    } else {
+                        LaunchedEffect(Unit) { AuthRepository.signInAnonymously() }
+                    }
                 }
                 AppGateScreen.ProfileSelection.name -> {
                     Box(

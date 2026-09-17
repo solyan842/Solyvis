@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import com.nuvio.app.core.build.AppFeaturePolicy
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -107,14 +108,16 @@ internal fun LazyListScope.settingsRootContent(
                         )
                         SettingsGroupDivider(isTablet = isTablet)
                     }
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_account),
-                        description = stringResource(Res.string.compose_settings_root_account_description),
-                        icon = Icons.Rounded.AccountCircle,
-                        isTablet = isTablet,
-                        onClick = onAccountClick,
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
+                    if (AppFeaturePolicy.accountServicesEnabled) {
+                        SettingsNavigationRow(
+                            title = stringResource(Res.string.compose_settings_page_account),
+                            description = stringResource(Res.string.compose_settings_root_account_description),
+                            icon = Icons.Rounded.AccountCircle,
+                            isTablet = isTablet,
+                            onClick = onAccountClick,
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                    }
                     SettingsNavigationRow(
                         title = stringResource(Res.string.compose_settings_page_tracking),
                         description = stringResource(Res.string.compose_settings_root_tracking_description),
