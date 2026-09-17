@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7 — Remove legacy account runtime
+
+- Removed the Login/Create Account, Device Link, and Account Settings UI/source modules.
+- Removed Account routes, saved-state registration, settings pages, navigation callbacks, and account search results.
+- Simplified app startup to the stable local installation identity with no authentication screen state.
+- Made profile load, create, edit, and delete paths local-only and removed their remote Supabase RPC branches.
+- Kept cached verification for existing profile PINs, while removing unavailable remote PIN setup/reset code.
+- Kept profile switching, Tracking integrations, custom server switching, iOS 15 support, and GPL provenance.
+- Bumped product version to 0.1.7 / build 8.
+
 ## 0.1.6 — Local-only hardening
 
 - Hide Account and its search results while keeping profile switching and Tracking available on phone and tablet.

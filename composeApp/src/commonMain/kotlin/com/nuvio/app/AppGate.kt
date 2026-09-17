@@ -25,7 +25,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.auth.DeviceSessionRegistration
-import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.sync.SyncManager
 import com.nuvio.app.core.ui.NativeProfileSwitcherController
@@ -34,8 +33,6 @@ import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.PlatformBackHandler
 import com.nuvio.app.core.ui.nuvio
-import com.nuvio.app.core.build.AppFeaturePolicy
-import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.membership.MemberAccessRepository
 import com.nuvio.app.features.profiles.AvatarRepository
 import com.nuvio.app.features.profiles.NuvioProfile
@@ -47,7 +44,6 @@ import com.nuvio.app.navigation.AppRoute
 
 private enum class AppGateScreen {
     Loading,
-    Auth,
     ProfileSelection,
     ProfileEdit,
     Main,
@@ -115,10 +111,6 @@ internal fun AppGate(
     val authState by AuthRepository.state.collectAsStateWithLifecycle()
     val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
     val profileAvatars by AvatarRepository.avatars.collectAsStateWithLifecycle()
-    val networkStatusUiState by remember {
-        NetworkStatusRepository.uiState
-    }.collectAsStateWithLifecycle()
-
     LaunchedEffect(authState) {
         if (!ownsAppRuntime) return@LaunchedEffect
         DeviceSessionRegistration.registerIfAuthenticated(force = true)
@@ -172,7 +164,6 @@ internal fun AppGate(
                 onMainContentMountChanged?.invoke(true)
             }
             AppGateScreen.Loading.name,
-            AppGateScreen.Auth.name,
             -> {
                 mainContentStarted = false
                 appGateController?.reportMainContentReady(false)
@@ -292,17 +283,11 @@ internal fun AppGate(
         }
     }
 
-    LaunchedEffect(authState, networkStatusUiState.condition, profileState.profiles) {
+    LaunchedEffect(authState, profileState.profiles) {
         val cachedProfiles = profileState.profiles
         val hasCachedProfileAccess =
             cachedProfiles.isNotEmpty() &&
                 authState !is AuthState.Authenticated
-        val allowCachedProfileAccess =
-            hasCachedProfileAccess &&
-                (
-                    networkStatusUiState.condition != NetworkCondition.Online ||
-                        gateScreen != AppGateScreen.Auth.name
-                )
 
         when (authState) {
             is AuthState.Loading -> {
@@ -312,22 +297,10 @@ internal fun AppGate(
                     gateScreen = AppGateScreen.Loading.name
                 }
             }
-            is AuthState.Unauthenticated -> {
-                if (!AppFeaturePolicy.accountServicesEnabled) {
-                    AuthRepository.signInAnonymously()
-                } else if (allowCachedProfileAccess) {
-                    enterProfileGate(cachedProfiles, syncOnEnter = false)
-                } else {
-                    ProfileRepository.clearInMemory()
-                    profileSelectionLoading = false
-                    profileSelectionTransitionActive = false
-                    gateScreen = AppGateScreen.Auth.name
-                }
-            }
             is AuthState.Authenticated -> {
                 val authenticatedState = authState as AuthState.Authenticated
                 ProfileRepository.ensureLoaded(authenticatedState.userId)
-                if (gateScreen == AppGateScreen.Loading.name || gateScreen == AppGateScreen.Auth.name) {
+                if (gateScreen == AppGateScreen.Loading.name) {
                     enterProfileGate(ProfileRepository.state.value.profiles, syncOnEnter = true)
                 }
             }
@@ -429,13 +402,6 @@ internal fun AppGate(
                         contentAlignment = Alignment.Center,
                     ) {
                         NuvioLoadingIndicator(color = MaterialTheme.nuvio.colors.accent)
-                    }
-                }
-                AppGateScreen.Auth.name -> {
-                    if (AppFeaturePolicy.accountServicesEnabled) {
-                        AuthScreen(modifier = Modifier.fillMaxSize())
-                    } else {
-                        LaunchedEffect(Unit) { AuthRepository.signInAnonymously() }
                     }
                 }
                 AppGateScreen.ProfileSelection.name -> {

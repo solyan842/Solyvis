@@ -133,7 +133,6 @@ import com.nuvio.app.features.player.LockPlayerToLandscape
 import com.nuvio.app.features.player.HidePlayerSystemBars
 import com.nuvio.app.features.player.rememberExternalPlayerLauncher
 import com.nuvio.app.features.profiles.ProfileRepository
-import com.nuvio.app.features.settings.AccountSettingsScreen
 import com.nuvio.app.features.settings.AddonsSettingsScreen
 import com.nuvio.app.features.settings.ContinueWatchingSettingsScreen
 import com.nuvio.app.features.settings.HomescreenSettingsScreen
@@ -351,7 +350,6 @@ internal fun MainAppContent(
     val downloadsSettingsTitle = stringResource(Res.string.compose_settings_root_downloads_title)
     val addonsSettingsTitle = stringResource(Res.string.compose_settings_page_addons)
     val pluginsSettingsTitle = stringResource(Res.string.compose_settings_page_plugins)
-    val accountSettingsTitle = stringResource(Res.string.compose_settings_page_account)
     val supportersSettingsTitle = stringResource(Res.string.compose_settings_page_supporters_contributors)
     val licensesSettingsTitle = stringResource(Res.string.compose_settings_page_licenses_attributions)
     val collectionsTitle = stringResource(Res.string.collections_header)
@@ -1408,11 +1406,6 @@ internal fun MainAppContent(
                                         navController.navigate(PluginsSettingsRoute(pluginsSettingsTitle))
                                     }
                                 },
-                                onAccountSettingsClick = {
-                                    if (AppFeaturePolicy.accountServicesEnabled) {
-                                        navController.navigate(AccountSettingsRoute(accountSettingsTitle))
-                                    }
-                                },
                                 onSupportersContributorsSettingsClick = {
                                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
                                         navController.navigate(SupportersContributorsSettingsRoute(supportersSettingsTitle))
@@ -1597,11 +1590,6 @@ internal fun MainAppContent(
                         SettingsDestination(route, navController) { onBack ->
                             PluginsSettingsScreen(onBack = onBack)
                         }
-                    }
-                }
-                entry<AccountSettingsRoute> { route ->
-                    SettingsDestination(route, navController) { onBack ->
-                        AccountSettingsScreen(onBack = onBack)
                     }
                 }
                 entry<SupportersContributorsSettingsRoute> { route ->

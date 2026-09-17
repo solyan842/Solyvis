@@ -5,8 +5,6 @@ actual object AppFeaturePolicy {
     actual val supportersContributorsPageEnabled: Boolean = true
     actual val donationActionsEnabled: Boolean = false
     actual val donationProgressEnabled: Boolean = true
-    actual val accountServicesEnabled: Boolean = false
-    actual val accountDeletionEnabled: Boolean = true
     actual val personalMediaAddonCopyEnabled: Boolean = false
     actual val p2pEnabled: Boolean = true
     actual val trailerPlaybackMode: TrailerPlaybackMode = TrailerPlaybackMode.EXTERNAL

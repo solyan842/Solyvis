@@ -22,7 +22,6 @@ import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import nuvio.composeapp.generated.resources.Res
-import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_addons
 import nuvio.composeapp.generated.resources.compose_settings_page_continue_watching
 import nuvio.composeapp.generated.resources.compose_settings_page_homescreen
@@ -184,28 +183,5 @@ fun PluginsSettingsScreen(
             )
         }
         pluginsSettingsContent()
-    }
-}
-
-@Composable
-fun AccountSettingsScreen(
-    onBack: () -> Unit,
-) {
-    if (!AppFeaturePolicy.accountServicesEnabled) {
-        LaunchedEffect(Unit) { onBack() }
-        return
-    }
-    NuvioScreen(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        stickyHeader {
-            NuvioScreenHeader(
-                title = stringResource(Res.string.compose_settings_page_account),
-                onBack = onBack,
-            )
-        }
-        accountSettingsContent(
-            isTablet = false,
-        )
     }
 }
